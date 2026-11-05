@@ -1,0 +1,9 @@
+[package]
+name = "ukz-core"
+version = "0.5.0"
+edition = "2021"
+description = "Integer-based core for Universal Coordinate Time"
+
+[lib]
+name = "ukz_core"
+path = "src/lib.rs"
