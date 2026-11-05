@@ -1,0 +1,43 @@
+{
+  "specification_version": "1.0",
+  "input_scale": "POSIX",
+  "epoch_anchor_utc": "2024-01-01T00:00:00.000000Z",
+  "test_vectors": [
+    {
+      "comment": "epoch",
+      "unix_micros": 1704067200000000,
+      "expected_ticks": 0,
+      "expected_calendar": {
+        "year": 0,
+        "day": 0,
+        "hour": 0,
+        "minute": 0,
+        "second": 0
+      }
+    },
+    {
+      "comment": "half decimal day",
+      "unix_micros": 1704110400000000,
+      "expected_ticks": 50000,
+      "expected_calendar": {
+        "year": 0,
+        "day": 0,
+        "hour": 5,
+        "minute": 0,
+        "second": 0
+      }
+    },
+    {
+      "comment": "one UKZ day before epoch",
+      "unix_micros": 1703980800000000,
+      "expected_ticks": -100000,
+      "expected_calendar": {
+        "year": -1,
+        "day": 519,
+        "hour": 0,
+        "minute": 0,
+        "second": 0
+      }
+    }
+  ]
+}
