@@ -1,0 +1,113 @@
+use chrono::{DateTime, NaiveDate, Utc, Duration};
+use serde::Deserialize;
+use std::{fs, path::Path};
+use ukz_core::Ukz;
+
+pub const EPOCH_TAI_MICROS:i64=1_704_067_237_000_000;
+pub const UNIX_EPOCH_POSIX_MICROS:i64=0;
+
+#[derive(Debug,Clone,Copy,PartialEq,Eq)]
+pub enum ConversionStatus { Confirmed, Provisional, Unknown }
+#[derive(Debug,Clone,PartialEq,Eq)]
+pub enum UtcError {
+ Parse(String), BeforeSupportedRange, NoLeapSecond, InvalidLeapSecond,
+ InvalidTable(String), Overflow, Io(String), Json(String)
+}
+impl std::fmt::Display for UtcError {
+ fn fmt(&self,f:&mut std::fmt::Formatter<'_>)->std::fmt::Result{write!(f,"{:?}",self)}
+}
+impl std::error::Error for UtcError {}
+
+#[derive(Debug,Clone,Deserialize)]
+pub struct RawEntry { pub effective_utc:String, pub tai_minus_utc:i32 }
+#[derive(Debug,Deserialize)]
+struct RawTable { pub entries:Vec<RawEntry>, pub confirmed_through:String }
+
+#[derive(Debug,Clone)]
+pub struct LeapEntry { pub effective_utc:DateTime<Utc>, pub tai_minus_utc:i32 }
+#[derive(Debug,Clone)]
+pub struct LeapSecondTable { entries:Vec<LeapEntry>, confirmed_through:DateTime<Utc> }
+
+impl LeapSecondTable {
+ pub fn from_json_file(path:impl AsRef<Path>)->Result<Self,UtcError>{
+  let data=fs::read_to_string(path).map_err(|e|UtcError::Io(e.to_string()))?;
+  let raw:RawTable=serde_json::from_str(&data).map_err(|e|UtcError::Json(e.to_string()))?;
+  let mut entries=Vec::new();
+  for r in raw.entries {
+   let dt=parse_normal(&r.effective_utc)?;
+   entries.push(LeapEntry{effective_utc:dt,tai_minus_utc:r.tai_minus_utc});
+  }
+  let confirmed=parse_normal(&raw.confirmed_through)?;
+  Self::new(entries,confirmed)
+ }
+ pub fn new(entries:Vec<LeapEntry>,confirmed_through:DateTime<Utc>)->Result<Self,UtcError>{
+  if entries.is_empty() || entries[0].effective_utc != parse_normal("1972-01-01T00:00:00Z")? {
+   return Err(UtcError::InvalidTable("must begin 1972-01-01".into()));
+  }
+  for w in entries.windows(2) {
+   if w[1].effective_utc<=w[0].effective_utc {return Err(UtcError::InvalidTable("entries not strictly ordered".into()));}
+   if (w[1].tai_minus_utc-w[0].tai_minus_utc).abs()!=1 {return Err(UtcError::InvalidTable("offset step must be +/-1 second".into()));}
+  }
+  Ok(Self{entries,confirmed_through})
+ }
+ fn offset_at(&self,dt:DateTime<Utc>)->Result<(i32,ConversionStatus),UtcError>{
+  if dt<self.entries[0].effective_utc{return Err(UtcError::BeforeSupportedRange)}
+  let mut off=self.entries[0].tai_minus_utc;
+  for e in self.entries.iter().skip(1){if dt<e.effective_utc{break;} off=e.tai_minus_utc;}
+  let status=if dt<=self.confirmed_through{ConversionStatus::Confirmed}else{ConversionStatus::Provisional};
+  Ok((off,status))
+ }
+ fn transition_after_day(&self,day:NaiveDate)->Option<(i32,i32)>{
+  let next=day.succ_opt()?.and_hms_opt(0,0,0)?;
+  let next=DateTime::<Utc>::from_naive_utc_and_offset(next,Utc);
+  for i in 1..self.entries.len(){
+   if self.entries[i].effective_utc==next{return Some((self.entries[i-1].tai_minus_utc,self.entries[i].tai_minus_utc));}
+  }
+  None
+ }
+}
+
+pub struct TaiAdapter;
+impl TaiAdapter {
+ pub fn from_tai_micros(value:i64)->Result<Ukz,UtcError>{
+  let rel=value.checked_sub(EPOCH_TAI_MICROS).ok_or(UtcError::Overflow)?;
+  Ok(Ukz::new(rel.div_euclid(Ukz::TICK_MICROS)))
+ }
+}
+pub struct UtcAdapter;
+impl UtcAdapter {
+ pub fn from_utc_string(s:&str,table:&LeapSecondTable)->Result<(Ukz,ConversionStatus),UtcError>{
+  // chrono cannot parse :60; split and validate it explicitly.
+  let (base,us,leap)=parse_utc_parts(s)?;
+  if leap {
+   if base.hour()!=23 || base.minute()!=59{return Err(UtcError::InvalidLeapSecond)}
+   let day=base.date_naive();
+   let (old,new)=table.transition_after_day(day).ok_or(UtcError::NoLeapSecond)?;
+   if new!=old+1{return Err(UtcError::InvalidLeapSecond)}
+   let next=day.succ_opt().ok_or(UtcError::Overflow)?.and_hms_opt(0,0,0).ok_or(UtcError::Overflow)?;
+   let next=DateTime::<Utc>::from_naive_utc_and_offset(next,Utc);
+   let unix_us=next.timestamp_micros().checked_add(us as i64).ok_or(UtcError::Overflow)?;
+   let tai=unix_us.checked_add((old as i64)*1_000_000).ok_or(UtcError::Overflow)?;
+   let status=if next<=table.confirmed_through+Duration::microseconds(1){ConversionStatus::Confirmed}else{ConversionStatus::Provisional};
+   return Ok((TaiAdapter::from_tai_micros(tai)?,status));
+  }
+  let dt=base.checked_add_signed(Duration::microseconds(us as i64)).ok_or(UtcError::Overflow)?;
+  let (offset,status)=table.offset_at(dt)?;
+  let tai=dt.timestamp_micros().checked_add((offset as i64)*1_000_000).ok_or(UtcError::Overflow)?;
+  Ok((TaiAdapter::from_tai_micros(tai)?,status))
+ }
+}
+fn parse_normal(s:&str)->Result<DateTime<Utc>,UtcError>{
+ DateTime::parse_from_rfc3339(s).map(|d|d.with_timezone(&Utc)).map_err(|e|UtcError::Parse(e.to_string()))
+}
+fn parse_utc_parts(s:&str)->Result<(DateTime<Utc>,u32,bool),UtcError>{
+ if !s.ends_with('Z'){return Err(UtcError::Parse("UTC input must end in Z".into()));}
+ let body=&s[..s.len()-1];
+ let (whole,frac)=body.split_once('.').unwrap_or((body,""));
+ if frac.len()>6 || !frac.bytes().all(|b|b.is_ascii_digit()){return Err(UtcError::Parse("fraction must contain 1..6 digits".into()));}
+ let us=if frac.is_empty(){0}else{frac.parse::<u32>().map_err(|e|UtcError::Parse(e.to_string()))?*10u32.pow((6-frac.len()) as u32)};
+ let leap=whole.ends_with(":60");
+ let normalized=if leap {format!("{}59Z",&whole[..whole.len()-2])}else{format!("{}Z",whole)};
+ let dt=parse_normal(&normalized)?;
+ Ok((dt,us,leap))
+}
