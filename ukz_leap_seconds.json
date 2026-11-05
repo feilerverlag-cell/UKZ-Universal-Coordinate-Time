@@ -1,0 +1,127 @@
+{
+  "table_version": "1.0.0",
+  "source": "IERS historical leap-second announcements; cross-checked against NIST and Hong Kong Observatory",
+  "time_scale": "UTC",
+  "offset_definition": "TAI_minus_UTC",
+  "supported_from": "1972-01-01T00:00:00Z",
+  "confirmed_through": "2027-06-30T23:59:59Z",
+  "entries": [
+    {
+      "effective_utc": "1972-01-01T00:00:00Z",
+      "tai_minus_utc": 10
+    },
+    {
+      "effective_utc": "1972-07-01T00:00:00Z",
+      "tai_minus_utc": 11
+    },
+    {
+      "effective_utc": "1973-01-01T00:00:00Z",
+      "tai_minus_utc": 12
+    },
+    {
+      "effective_utc": "1974-01-01T00:00:00Z",
+      "tai_minus_utc": 13
+    },
+    {
+      "effective_utc": "1975-01-01T00:00:00Z",
+      "tai_minus_utc": 14
+    },
+    {
+      "effective_utc": "1976-01-01T00:00:00Z",
+      "tai_minus_utc": 15
+    },
+    {
+      "effective_utc": "1977-01-01T00:00:00Z",
+      "tai_minus_utc": 16
+    },
+    {
+      "effective_utc": "1978-01-01T00:00:00Z",
+      "tai_minus_utc": 17
+    },
+    {
+      "effective_utc": "1979-01-01T00:00:00Z",
+      "tai_minus_utc": 18
+    },
+    {
+      "effective_utc": "1980-01-01T00:00:00Z",
+      "tai_minus_utc": 19
+    },
+    {
+      "effective_utc": "1981-07-01T00:00:00Z",
+      "tai_minus_utc": 20
+    },
+    {
+      "effective_utc": "1982-07-01T00:00:00Z",
+      "tai_minus_utc": 21
+    },
+    {
+      "effective_utc": "1983-07-01T00:00:00Z",
+      "tai_minus_utc": 22
+    },
+    {
+      "effective_utc": "1985-07-01T00:00:00Z",
+      "tai_minus_utc": 23
+    },
+    {
+      "effective_utc": "1988-01-01T00:00:00Z",
+      "tai_minus_utc": 24
+    },
+    {
+      "effective_utc": "1990-01-01T00:00:00Z",
+      "tai_minus_utc": 25
+    },
+    {
+      "effective_utc": "1991-01-01T00:00:00Z",
+      "tai_minus_utc": 26
+    },
+    {
+      "effective_utc": "1992-07-01T00:00:00Z",
+      "tai_minus_utc": 27
+    },
+    {
+      "effective_utc": "1993-07-01T00:00:00Z",
+      "tai_minus_utc": 28
+    },
+    {
+      "effective_utc": "1994-07-01T00:00:00Z",
+      "tai_minus_utc": 29
+    },
+    {
+      "effective_utc": "1996-01-01T00:00:00Z",
+      "tai_minus_utc": 30
+    },
+    {
+      "effective_utc": "1997-07-01T00:00:00Z",
+      "tai_minus_utc": 31
+    },
+    {
+      "effective_utc": "1999-01-01T00:00:00Z",
+      "tai_minus_utc": 32
+    },
+    {
+      "effective_utc": "2006-01-01T00:00:00Z",
+      "tai_minus_utc": 33
+    },
+    {
+      "effective_utc": "2009-01-01T00:00:00Z",
+      "tai_minus_utc": 34
+    },
+    {
+      "effective_utc": "2012-07-01T00:00:00Z",
+      "tai_minus_utc": 35
+    },
+    {
+      "effective_utc": "2015-07-01T00:00:00Z",
+      "tai_minus_utc": 36
+    },
+    {
+      "effective_utc": "2017-01-01T00:00:00Z",
+      "tai_minus_utc": 37
+    }
+  ],
+  "notes": [
+    "UTC before 1972 is intentionally unsupported by this integer leap-second model.",
+    "IERS Bulletin C 72 (2026-07) states no leap second through 2027-06-30.",
+    "Update this file from a later IERS Bulletin C before extending confirmed_through."
+  ]
+}
